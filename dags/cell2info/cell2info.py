@@ -1,5 +1,8 @@
+from datetime import timedelta
+
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.utils.dates import days_ago
 from airflow.utils.task_group import TaskGroup
 from cell2info.tasks import (
     delete_temp_directory,
@@ -11,7 +14,14 @@ from cell2info.tasks import (
     parse_and_prepare,
 )
 
-with DAG(dag_id="cell2info", catchup=False, max_active_runs=1) as dag:
+default_args = {
+    "start_date": days_ago(2),
+    "retries": 1,
+    "retry_delay": timedelta(minutes=5),
+}
+with DAG(
+    dag_id="cell2info", catchup=False, max_active_runs=1, default_args=default_args
+) as dag:
     download_data = PythonOperator(
         task_id="download_data",
         python_callable=download_cell2info,

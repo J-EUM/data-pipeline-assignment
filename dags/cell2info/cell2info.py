@@ -2,6 +2,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.utils.task_group import TaskGroup
 from cell2info.tasks import (
+    delete_temp_directory,
     download_cell2info,
     extract_gz_to_tsv,
     load_cells_to_sqlite,
@@ -16,13 +17,16 @@ with DAG(dag_id="cell2info", catchup=False, max_active_runs=1) as dag:
         python_callable=download_cell2info,
     )
 
-    extract_gz_to_tsv = PythonOperator(
-        task_id="extract_gz_to_tsv", python_callable=extract_gz_to_tsv
-    )
+    with TaskGroup(group_id="prepare_data") as transform:
+        extract_gz_to_tsv = PythonOperator(
+            task_id="extract_gz_to_tsv", python_callable=extract_gz_to_tsv
+        )
 
-    parse_and_prepare = PythonOperator(
-        task_id="parse_and_prepare", python_callable=parse_and_prepare
-    )
+        parse_and_prepare = PythonOperator(
+            task_id="parse_and_prepare", python_callable=parse_and_prepare
+        )
+
+        extract_gz_to_tsv >> parse_and_prepare
 
     with TaskGroup(group_id="load_to_sqlite") as load:
         load_taxonomy = PythonOperator(
@@ -39,4 +43,8 @@ with DAG(dag_id="cell2info", catchup=False, max_active_runs=1) as dag:
 
         load_taxonomy >> load_cells >> load_synonyms
 
-    download_data >> extract_gz_to_tsv >> parse_and_prepare >> load
+    cleanup = PythonOperator(
+        task_id="delete_temp_directory", python_callable=delete_temp_directory
+    )
+
+    download_data >> transform >> load >> cleanup

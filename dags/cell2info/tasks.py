@@ -1,6 +1,7 @@
 import csv
 import gzip
 import json
+import logging
 import os
 import shutil
 import sqlite3
@@ -37,7 +38,7 @@ def extract_gz_to_tsv(**context):
 
 
 def parse_and_prepare(**context):
-    tsv_path = context["ti"].xcom_pull(task_ids="extract_gz_to_tsv")
+    tsv_path = context["ti"].xcom_pull(task_ids="prepare_data.extract_gz_to_tsv")
 
     taxonomy = []  # taxonomy_id, organism
     cells = []  # cell_id, taxonomy_id, name, tissue
@@ -81,7 +82,6 @@ def parse_and_prepare(**context):
             unique_taxonomy.append(row)
 
     # JSON으로 저장
-    os.makedirs(TEMP_DIR, exist_ok=True)
     json_paths = {
         "taxonomy": os.path.join(TEMP_DIR, "taxonomy.json"),
         "cells": os.path.join(TEMP_DIR, "cells.json"),
@@ -102,7 +102,7 @@ def parse_and_prepare(**context):
 
 
 def load_cells_to_sqlite(**context):
-    json_paths = context["ti"].xcom_pull(task_ids="parse_and_prepare")
+    json_paths = context["ti"].xcom_pull(task_ids="prepare_data.parse_and_prepare")
     with open(json_paths["cells"], "r", encoding="utf-8") as f:
         cells = json.load(f)
 
@@ -135,7 +135,7 @@ def load_cells_to_sqlite(**context):
 
 
 def load_taxonomy_to_sqlite(**context):
-    json_paths = context["ti"].xcom_pull(task_ids="parse_and_prepare")
+    json_paths = context["ti"].xcom_pull(task_ids="prepare_data.parse_and_prepare")
     with open(json_paths["taxonomy"], "r", encoding="utf-8") as f:
         taxonomy = json.load(f)
 
@@ -162,7 +162,7 @@ def load_taxonomy_to_sqlite(**context):
 
 
 def load_synonyms_to_sqlite(**context):
-    json_paths = context["ti"].xcom_pull(task_ids="parse_and_prepare")
+    json_paths = context["ti"].xcom_pull(task_ids="prepare_data.parse_and_prepare")
     with open(json_paths["synonyms"], "r", encoding="utf-8") as f:
         synonyms = json.load(f)
 
@@ -187,3 +187,9 @@ def load_synonyms_to_sqlite(**context):
 
     conn.commit()
     conn.close()
+
+
+def delete_temp_directory():
+    if os.path.exists(TEMP_DIR):
+        shutil.rmtree(TEMP_DIR)
+        logging.info(f"Deleted existing temp directory: {TEMP_DIR}")

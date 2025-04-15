@@ -1,19 +1,17 @@
 from airflow import DAG
+from airflow.operators.python import PythonOperator
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from airflow.utils.task_group import TaskGroup
-from airflow.operators.python import PythonOperator
 from cell2info.tasks import (
     download_cell2info,
     extract_gz_to_tsv,
-    parse_and_prepare,
     load_cells_to_sqlite,
-    load_taxonomy_to_sqlite,
     load_synonyms_to_sqlite,
+    load_taxonomy_to_sqlite,
+    parse_and_prepare,
 )
 
-
 with DAG(dag_id="cell2info", catchup=False, max_active_runs=1) as dag:
-
     # init_db = SQLExecuteQueryOperator(
     #     task_id="init_db",
     #     sql="create_tables.sql",
@@ -36,7 +34,6 @@ with DAG(dag_id="cell2info", catchup=False, max_active_runs=1) as dag:
     )
 
     with TaskGroup(group_id="load_to_sqlite") as load:
-
         load_taxonomy = PythonOperator(
             task_id="load_taxonomy_to_sqlite", python_callable=load_taxonomy_to_sqlite
         )

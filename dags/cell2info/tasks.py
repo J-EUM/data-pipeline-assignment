@@ -1,10 +1,11 @@
+import csv
 import gzip
+import json
 import os
 import shutil
-import requests
-import csv
-import json
 import sqlite3
+
+import requests
 
 RAW_DIR = "/opt/airflow/data/raw"
 TEMP_DIR = "/opt/airflow/data/temp"

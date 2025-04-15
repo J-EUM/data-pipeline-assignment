@@ -6,18 +6,19 @@ import shutil
 import sqlite3
 
 import requests
+from airflow.models import Variable
 
-RAW_DIR = "/opt/airflow/data/raw"
-TEMP_DIR = "/opt/airflow/data/temp"
+DATA_PATH = Variable.get("data_path")
+TEMP_DIR = os.path.join(DATA_PATH, "temp")
+SQLITE_DB_PATH = Variable.get("sqlite_db_path")
 
 
 def download_cell2info(ts_nodash):
     url = "https://ftp.ncbi.nlm.nih.gov/pubchem/Target/cell2info.gz"
     response = requests.get(url)
 
-    os.makedirs(RAW_DIR, exist_ok=True)
     gz_filename = f"cell2info_{ts_nodash}.gz"
-    gz_path = os.path.join(RAW_DIR, gz_filename)
+    gz_path = os.path.join(DATA_PATH, gz_filename)
 
     with open(gz_path, "wb") as f:
         f.write(response.content)
@@ -37,8 +38,7 @@ def extract_gz_to_tsv(**context):
 
 def parse_and_prepare(**context):
     tsv_path = context["ti"].xcom_pull(task_ids="extract_gz_to_tsv")
-    # CellID	Name	Tissue	Organism	TaxonomyID	Synonyms
-    # 1	HEL	blood	Homo sapiens (human)	9606	Hel|GM06141|GM06141B|Human ErythroLeukemia
+
     taxonomy = []  # taxonomy_id, organism
     cells = []  # cell_id, taxonomy_id, name, tissue
     synonyms = []  # cell_id, synonym
@@ -106,7 +106,7 @@ def load_cells_to_sqlite(**context):
     with open(json_paths["cells"], "r", encoding="utf-8") as f:
         cells = json.load(f)
 
-    conn = sqlite3.connect("/opt/airflow/db/cell2info.db")
+    conn = sqlite3.connect(SQLITE_DB_PATH)
     conn.execute("PRAGMA foreign_keys = ON;")
     cursor = conn.cursor()
 
@@ -139,7 +139,7 @@ def load_taxonomy_to_sqlite(**context):
     with open(json_paths["taxonomy"], "r", encoding="utf-8") as f:
         taxonomy = json.load(f)
 
-    conn = sqlite3.connect("/opt/airflow/db/cell2info.db")
+    conn = sqlite3.connect(SQLITE_DB_PATH)
     conn.execute("PRAGMA foreign_keys = ON;")
     cursor = conn.cursor()
 
@@ -166,7 +166,7 @@ def load_synonyms_to_sqlite(**context):
     with open(json_paths["synonyms"], "r", encoding="utf-8") as f:
         synonyms = json.load(f)
 
-    conn = sqlite3.connect("/opt/airflow/db/cell2info.db")
+    conn = sqlite3.connect(SQLITE_DB_PATH)
     conn.execute("PRAGMA foreign_keys = ON;")
     cursor = conn.cursor()
 

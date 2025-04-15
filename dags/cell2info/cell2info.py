@@ -1,6 +1,5 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from airflow.utils.task_group import TaskGroup
 from cell2info.tasks import (
     download_cell2info,
@@ -12,14 +11,6 @@ from cell2info.tasks import (
 )
 
 with DAG(dag_id="cell2info", catchup=False, max_active_runs=1) as dag:
-    # init_db = SQLExecuteQueryOperator(
-    #     task_id="init_db",
-    #     sql="create_tables.sql",
-    #     autocommit=True,
-    #     conn_id="sqlite_conn",
-    #     split_statements=True,
-    # )
-
     download_data = PythonOperator(
         task_id="download_data",
         python_callable=download_cell2info,
